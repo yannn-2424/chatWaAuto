@@ -6,10 +6,20 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -n \"SERVER,CLIENT\" -c \"cyan.bold,emerald.bold\" \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
-    "build": "cd client && npm install --production=false && npx vite build",
+    "build": "npm install --prefix server && npm install --prefix client --production=false && cd client && npx vite build",
     "start": "node server/index.js"
   },
   "dependencies": {
-    "concurrently": "^8.2.2"
+    "@whiskeysockets/baileys": "^6.7.9",
+    "concurrently": "^8.2.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "node-cron": "^3.0.3",
+    "pino": "^9.2.0",
+    "pino-pretty": "^11.2.1",
+    "qrcode": "^1.5.3",
+    "socket.io": "^4.7.5",
+    "sqlite3": "^5.1.7"
   }
 }
