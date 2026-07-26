@@ -19,8 +19,9 @@ import {
   XCircle,
   AlertCircle,
   Sparkles,
-  Info
-} from 'lucide-react';
+  Info,
+  Lock
+} from './components/Icons.jsx';
 
 import Login from './components/Login.jsx';
 
