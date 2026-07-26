@@ -43,7 +43,9 @@ const getStoredToken = () => {
 };
 
 const BACKEND_URL = getBackendUrl();
-const socket = io(BACKEND_URL || undefined);
+const socket = io(BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5001'), {
+  transports: ['websocket', 'polling']
+});
 const api = axios.create({ baseURL: BACKEND_URL });
 
 api.interceptors.request.use((config) => {
