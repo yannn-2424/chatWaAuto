@@ -9,7 +9,7 @@
     "build": "npm run build --prefix client",
     "start": "node server/index.js"
   },
-  "devDependencies": {
+  "dependencies": {
     "concurrently": "^8.2.2"
   }
 }
