@@ -22,7 +22,19 @@ import {
   Info
 } from 'lucide-react';
 
-const socket = io();
+const RAILWAY_BACKEND_URL = 'https://chatwaauto-production.up.railway.app';
+
+const getBackendUrl = () => {
+  if (import.meta.env.VITE_SERVER_URL) return import.meta.env.VITE_SERVER_URL;
+  if (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
+    return RAILWAY_BACKEND_URL;
+  }
+  return '';
+};
+
+const BACKEND_URL = getBackendUrl();
+const socket = io(BACKEND_URL || undefined);
+const api = axios.create({ baseURL: BACKEND_URL });
 
 export default function App() {
   const [waStatus, setWaStatus] = useState({ status: 'disconnected', qrCode: null, user: null });
@@ -55,7 +67,7 @@ export default function App() {
 
   const fetchSchedules = async () => {
     try {
-      const res = await axios.get('/api/schedules');
+      const res = await api.get('/api/schedules');
       setSchedules(res.data);
     } catch (e) {
       console.error('Fetch schedules error:', e);
@@ -64,7 +76,7 @@ export default function App() {
 
   const fetchTargets = async () => {
     try {
-      const res = await axios.get('/api/targets');
+      const res = await api.get('/api/targets');
       setTargets(res.data);
       if (res.data.length > 0 && !formData.target_jid) {
         setFormData(prev => ({
@@ -80,7 +92,7 @@ export default function App() {
 
   const fetchLogs = async () => {
     try {
-      const res = await axios.get('/api/logs');
+      const res = await api.get('/api/logs');
       setLogs(res.data);
     } catch (e) {
       console.error('Fetch logs error:', e);
@@ -89,7 +101,7 @@ export default function App() {
 
   const fetchStatus = async () => {
     try {
-      const res = await axios.get('/api/status');
+      const res = await api.get('/api/status');
       if (res.data) {
         setWaStatus(res.data);
       }
@@ -136,7 +148,7 @@ export default function App() {
   const handleLogout = async () => {
     if (window.confirm('Apakah Anda yakin ingin melepaskan koneksi WhatsApp?')) {
       try {
-        await axios.post('/api/logout');
+        await api.post('/api/logout');
       } catch (e) {
         alert('Gagal logout: ' + e.message);
       }
@@ -146,7 +158,7 @@ export default function App() {
   const handleSyncTargets = async () => {
     setLoading(true);
     try {
-      await axios.post('/api/sync-targets');
+      await api.post('/api/sync-targets');
       await fetchTargets();
       alert('Berhasil menyinkronkan kontak & grup WA!');
     } catch (e) {
@@ -173,7 +185,7 @@ export default function App() {
     }
 
     try {
-      await axios.post('/api/schedules', {
+      await api.post('/api/schedules', {
         ...formData,
         target_jid: finalJid,
         target_name: finalName
@@ -190,7 +202,7 @@ export default function App() {
 
   const handleToggleSchedule = async (id) => {
     try {
-      await axios.post(`/api/schedules/${id}/toggle`);
+      await api.post(`/api/schedules/${id}/toggle`);
       fetchSchedules();
     } catch (e) {
       alert('Gagal mengubah status jadwal');
@@ -200,7 +212,7 @@ export default function App() {
   const handleDeleteSchedule = async (id) => {
     if (window.confirm('Hapus jadwal pengiriman ini?')) {
       try {
-        await axios.delete(`/api/schedules/${id}`);
+        await api.delete(`/api/schedules/${id}`);
         fetchSchedules();
       } catch (e) {
         alert('Gagal menghapus jadwal');
@@ -216,7 +228,7 @@ export default function App() {
     }
     setLoading(true);
     try {
-      await axios.post('/api/test-send', testSendForm);
+      await api.post('/api/test-send', testSendForm);
       alert('Pesan uji coba berhasil dikirim!');
     } catch (err) {
       alert('Gagal mengirim pesan tes: ' + (err.response?.data?.error || err.message));
