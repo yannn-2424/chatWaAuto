@@ -19,7 +19,7 @@ let qrCodeData = null;
 let connectionStatus = 'disconnected'; // 'disconnected' | 'connecting' | 'connected' | 'qr_ready'
 let userInfo = null;
 
-const authDir = process.env.AUTH_DIR || path.join(__dirname, 'auth_info_baileys');
+const authDir = process.env.AUTH_DIR || (fs.existsSync('/data') ? '/data/auth_info_baileys' : path.join(__dirname, 'auth_info_baileys'));
 
 export const setSocketIO = (socketIoInstance) => {
   io = socketIoInstance;
