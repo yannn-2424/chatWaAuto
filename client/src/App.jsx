@@ -36,7 +36,10 @@ const getBackendUrl = () => {
 
 const getStoredToken = () => {
   try {
-    return typeof window !== 'undefined' ? localStorage.getItem('autowa_token') : null;
+    if (typeof window === 'undefined') return null;
+    const val = localStorage.getItem('autowa_token');
+    if (!val || val === 'null' || val === 'undefined' || val.trim() === '') return null;
+    return val;
   } catch (e) {
     return null;
   }
@@ -85,10 +88,14 @@ export default function App() {
     setLoading(true);
     try {
       const res = await api.post('/api/login', { password });
-      if (res.data.token) {
+      if (res && res.data && res.data.token) {
         localStorage.setItem('autowa_token', res.data.token);
         setToken(res.data.token);
+        return res.data;
       }
+    } catch (err) {
+      console.error('Admin login failed:', err);
+      throw err;
     } finally {
       setLoading(false);
     }
