@@ -34,12 +34,20 @@ const getBackendUrl = () => {
   return '';
 };
 
+const getStoredToken = () => {
+  try {
+    return typeof window !== 'undefined' ? localStorage.getItem('autowa_token') : null;
+  } catch (e) {
+    return null;
+  }
+};
+
 const BACKEND_URL = getBackendUrl();
 const socket = io(BACKEND_URL || undefined);
 const api = axios.create({ baseURL: BACKEND_URL });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('autowa_token');
+  const token = getStoredToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -47,7 +55,7 @@ api.interceptors.request.use((config) => {
 });
 
 export default function App() {
-  const [token, setToken] = useState(() => localStorage.getItem('autowa_token'));
+  const [token, setToken] = useState(() => getStoredToken());
   const [waStatus, setWaStatus] = useState({ status: 'disconnected', qrCode: null, user: null });
   const [schedules, setSchedules] = useState([]);
   const [targets, setTargets] = useState([]);
