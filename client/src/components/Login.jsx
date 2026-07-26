@@ -86,12 +86,6 @@ export default function Login({ onLogin, loading }) {
             )}
           </button>
         </form>
-
-        <div className="mt-8 pt-6 border-t border-slate-800 text-center">
-          <p className="text-[11px] text-slate-500">
-            Password Default: <code className="text-emerald-400 bg-slate-900 px-1.5 py-0.5 rounded font-mono">admin123</code>
-          </p>
-        </div>
       </div>
     </div>
   );

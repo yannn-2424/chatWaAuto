@@ -14,7 +14,10 @@ router.post('/login', (req, res) => {
     return res.status(400).json({ error: 'Password wajib diisi!' });
   }
 
-  if (password !== ADMIN_PASSWORD) {
+  const inputPassword = String(password).trim();
+  const expectedPassword = String(ADMIN_PASSWORD || 'admin123').trim();
+
+  if (inputPassword !== expectedPassword) {
     return res.status(401).json({ error: 'Password salah! Akses ditolak.' });
   }
 
