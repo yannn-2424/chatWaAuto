@@ -1,0 +1,16 @@
+{
+  "name": "chat-auto",
+  "version": "1.0.0",
+  "description": "WhatsApp Automation & Scheduler Web Application",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n \"SERVER,CLIENT\" -c \"cyan.bold,emerald.bold\" \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "server": "npm run dev --prefix server",
+    "client": "npm run dev --prefix client",
+    "start": "npm run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

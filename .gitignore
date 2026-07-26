@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Build Output
+client/dist/
+
+# Local SQLite Database
+server/data/
+*.db
+
+# WhatsApp Baileys Auth Session Files
+server/auth_info_baileys/
+
+# Environment & Logs
+.env
+*.log
+.DS_Store
