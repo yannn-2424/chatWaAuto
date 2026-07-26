@@ -1,3 +1,5 @@
+process.env.TZ = 'Asia/Jakarta';
+
 import cron from 'node-cron';
 import { query, run, getOne } from './db.js';
 import { sendMessage } from './waClient.js';

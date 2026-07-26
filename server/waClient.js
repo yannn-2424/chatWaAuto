@@ -173,11 +173,20 @@ export const sendMessage = async (jid, text) => {
     throw new Error('WhatsApp belum terhubung! Silakan scan QR code terlebih dahulu.');
   }
 
-  // Formatting JID if phone number passed as raw number
+  // Formatting JID if phone number passed as raw number or with leading 0
   let targetJid = jid;
   if (!targetJid.includes('@')) {
-    const cleanNumber = targetJid.replace(/[^0-9]/g, '');
+    let cleanNumber = targetJid.replace(/[^0-9]/g, '');
+    if (cleanNumber.startsWith('0')) {
+      cleanNumber = '62' + cleanNumber.slice(1);
+    }
     targetJid = `${cleanNumber}@s.whatsapp.net`;
+  } else if (targetJid.endsWith('@s.whatsapp.net')) {
+    const rawNumber = targetJid.split('@')[0];
+    if (rawNumber.startsWith('0')) {
+      const cleanNumber = '62' + rawNumber.slice(1);
+      targetJid = `${cleanNumber}@s.whatsapp.net`;
+    }
   }
 
   const result = await sock.sendMessage(targetJid, { text });
