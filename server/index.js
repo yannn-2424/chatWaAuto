@@ -22,8 +22,26 @@ const io = new SocketIOServer(server, {
 app.use(cors());
 app.use(express.json());
 
-// Routes
+// Routes API
 app.use('/api', routes);
+
+// Serve Static React Client Build in Production
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const clientDistPath = path.join(__dirname, '../client/dist');
+
+if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api')) {
+      res.sendFile(path.join(clientDistPath, 'index.html'));
+    }
+  });
+}
 
 // Socket.io Connection
 io.on('connection', (socket) => {
