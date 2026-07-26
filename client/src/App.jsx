@@ -22,8 +22,7 @@ import {
   Info
 } from 'lucide-react';
 
-const SOCKET_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:5001';
-const socket = io(SOCKET_URL);
+const socket = io();
 
 export default function App() {
   const [waStatus, setWaStatus] = useState({ status: 'disconnected', qrCode: null, user: null });
