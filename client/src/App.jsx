@@ -185,9 +185,7 @@ export default function App() {
     if (activeSocket) {
       activeSocket.on('wa_status', (data) => {
         setWaStatus(data);
-        if (data.status === 'qr_ready') {
-          setShowQrModal(true);
-        } else if (data.status === 'connected') {
+        if (data.status === 'connected') {
           setShowQrModal(false);
         }
       });
