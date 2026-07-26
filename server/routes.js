@@ -1,14 +1,38 @@
 import express from 'express';
+import jwt from 'jsonwebtoken';
 import { query, run, getOne } from './db.js';
 import { getStatus, logoutWhatsApp, sendMessage, syncGroupsAndContacts } from './waClient.js';
 import { calculateNextRun } from './scheduler.js';
+import { authMiddleware, JWT_SECRET, ADMIN_PASSWORD } from './authMiddleware.js';
 
 const router = express.Router();
 
-// Status WA
+// POST /api/login
+router.post('/login', (req, res) => {
+  const { password } = req.body;
+  if (!password) {
+    return res.status(400).json({ error: 'Password wajib diisi!' });
+  }
+
+  if (password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Password salah! Akses ditolak.' });
+  }
+
+  const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '30d' });
+  res.json({
+    success: true,
+    token,
+    message: 'Login berhasil! Selamat datang kembali.'
+  });
+});
+
+// GET /api/status (Public)
 router.get('/status', (req, res) => {
   res.json(getStatus());
 });
+
+// Protect all private routes below with authMiddleware
+router.use(authMiddleware);
 
 // Logout WA
 router.post('/logout', async (req, res) => {

@@ -22,6 +22,8 @@ import {
   Info
 } from 'lucide-react';
 
+import Login from './components/Login.jsx';
+
 const RAILWAY_BACKEND_URL = 'https://chatwaauto-production.up.railway.app';
 
 const getBackendUrl = () => {
@@ -36,15 +38,44 @@ const BACKEND_URL = getBackendUrl();
 const socket = io(BACKEND_URL || undefined);
 const api = axios.create({ baseURL: BACKEND_URL });
 
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('autowa_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 export default function App() {
+  const [token, setToken] = useState(() => localStorage.getItem('autowa_token'));
   const [waStatus, setWaStatus] = useState({ status: 'disconnected', qrCode: null, user: null });
   const [schedules, setSchedules] = useState([]);
   const [targets, setTargets] = useState([]);
   const [logs, setLogs] = useState([]);
-  const [activeTab, setActiveTab] = useState('schedules'); // 'schedules' | 'test-send' | 'targets' | 'logs'
+  const [activeTab, setActiveTab] = useState('schedules');
   const [loading, setLoading] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
+
+  const handleAdminLogin = async (password) => {
+    setLoading(true);
+    try {
+      const res = await api.post('/api/login', { password });
+      if (res.data.token) {
+        localStorage.setItem('autowa_token', res.data.token);
+        setToken(res.data.token);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAdminLogout = () => {
+    if (window.confirm('Apakah Anda yakin ingin keluar (Lock Dashboard)?')) {
+      localStorage.removeItem('autowa_token');
+      setToken(null);
+    }
+  };
 
   // Form State for Schedule
   const [formData, setFormData] = useState({
@@ -263,6 +294,10 @@ export default function App() {
     { num: 0, label: 'Minggu' },
   ];
 
+  if (!token) {
+    return <Login onLogin={handleAdminLogin} loading={loading} />;
+  }
+
   return (
     <div className="min-h-screen pb-12">
       {/* Top Header */}
@@ -280,8 +315,8 @@ export default function App() {
             </div>
           </div>
 
-          {/* WA Status Badge */}
-          <div className="flex items-center gap-4">
+          {/* WA Status Badge & Admin Lock */}
+          <div className="flex items-center gap-3">
             <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-800">
               <span className={`w-3 h-3 rounded-full ${
                 waStatus.status === 'connected' ? 'bg-emerald-500 animate-pulse shadow-lg shadow-emerald-500/50' :
@@ -307,7 +342,7 @@ export default function App() {
                 className="flex items-center gap-2 text-xs font-medium px-3.5 py-2 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/20 transition-all"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                Logout
+                Disconnect WA
               </button>
             ) : (
               <button
@@ -318,6 +353,15 @@ export default function App() {
                 Scan QR Code
               </button>
             )}
+
+            <button
+              onClick={handleAdminLogout}
+              className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all"
+              title="Kunci Dashboard Admin"
+            >
+              <Lock className="w-3.5 h-3.5 text-amber-400" />
+              Kunci
+            </button>
           </div>
         </div>
       </header>
