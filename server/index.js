@@ -24,7 +24,7 @@ const io = new SocketIOServer(server, {
 app.use(cors());
 app.use(express.json());
 
-// Routes API
+// WA Automation Backend Server - v1.0.2 (Auth & Persistence Ready)
 app.use('/api', routes);
 
 // Serve Static React Client Build in Production
