@@ -42,11 +42,25 @@ const getStoredToken = () => {
   }
 };
 
-const BACKEND_URL = getBackendUrl();
-const socket = io(BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5001'), {
-  transports: ['websocket', 'polling']
-});
-const api = axios.create({ baseURL: BACKEND_URL });
+let socketInstance = null;
+
+const getSocket = () => {
+  if (!socketInstance && typeof window !== 'undefined') {
+    const backendUrl = getBackendUrl();
+    const targetUrl = backendUrl || window.location.origin;
+    try {
+      socketInstance = io(targetUrl, {
+        transports: ['websocket', 'polling'],
+        autoConnect: true
+      });
+    } catch (e) {
+      console.error('Socket initialization error:', e);
+    }
+  }
+  return socketInstance;
+};
+
+const api = axios.create({ baseURL: getBackendUrl() });
 
 api.interceptors.request.use((config) => {
   const token = getStoredToken();
@@ -97,7 +111,7 @@ export default function App() {
     schedule_type: 'daily',
     scheduled_date: new Date().toISOString().split('T')[0],
     scheduled_time: '08:00',
-    days_of_week: [1, 2, 3, 4, 5], // Mon-Fri
+    days_of_week: [1, 2, 3, 4, 5],
   });
 
   // Form State for Test Send
@@ -152,39 +166,46 @@ export default function App() {
   };
 
   useEffect(() => {
+    if (!token) return;
+
     fetchStatus();
     fetchSchedules();
     fetchTargets();
     fetchLogs();
 
-    socket.on('wa_status', (data) => {
-      setWaStatus(data);
-      if (data.status === 'qr_ready') {
-        setShowQrModal(true);
-      } else if (data.status === 'connected') {
-        setShowQrModal(false);
-      }
-    });
+    const activeSocket = getSocket();
+    if (activeSocket) {
+      activeSocket.on('wa_status', (data) => {
+        setWaStatus(data);
+        if (data.status === 'qr_ready') {
+          setShowQrModal(true);
+        } else if (data.status === 'connected') {
+          setShowQrModal(false);
+        }
+      });
 
-    socket.on('schedules_updated', () => {
-      fetchSchedules();
-    });
+      activeSocket.on('schedules_updated', () => {
+        fetchSchedules();
+      });
 
-    socket.on('new_log', (newLog) => {
-      setLogs(prev => [newLog, ...prev]);
-    });
+      activeSocket.on('new_log', (newLog) => {
+        setLogs(prev => [newLog, ...prev]);
+      });
 
-    socket.on('contacts_updated', () => {
-      fetchTargets();
-    });
+      activeSocket.on('contacts_updated', () => {
+        fetchTargets();
+      });
+    }
 
     return () => {
-      socket.off('wa_status');
-      socket.off('schedules_updated');
-      socket.off('new_log');
-      socket.off('contacts_updated');
+      if (activeSocket) {
+        activeSocket.off('wa_status');
+        activeSocket.off('schedules_updated');
+        activeSocket.off('new_log');
+        activeSocket.off('contacts_updated');
+      }
     };
-  }, []);
+  }, [token]);
 
   const handleLogout = async () => {
     if (window.confirm('Apakah Anda yakin ingin melepaskan koneksi WhatsApp?')) {
