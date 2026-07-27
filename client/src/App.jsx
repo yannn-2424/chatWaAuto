@@ -20,7 +20,8 @@ import {
   AlertCircle,
   Sparkles,
   Info,
-  Lock
+  Lock,
+  Pencil
 } from './components/Icons.jsx';
 
 import Login from './components/Login.jsx';
@@ -84,6 +85,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
+  const [editingScheduleId, setEditingScheduleId] = useState(null);
 
   const handleAdminLogin = async (password) => {
     setLoading(true);
@@ -236,7 +238,50 @@ export default function App() {
     }
   };
 
-  const handleCreateSchedule = async (e) => {
+  const handleOpenCreateModal = () => {
+    setEditingScheduleId(null);
+    setFormData({
+      target_type: 'group',
+      target_jid: targets.length > 0 ? targets[0].jid : '',
+      target_name: targets.length > 0 ? targets[0].name : '',
+      custom_number: '',
+      message: 'Halo {nama}, ini adalah pesan otomatis yang dijadwalkan pada {tanggal} jam {jam}.',
+      schedule_type: 'daily',
+      scheduled_date: new Date().toISOString().split('T')[0],
+      scheduled_time: '08:00',
+      days_of_week: [1, 2, 3, 4, 5],
+    });
+    setShowScheduleModal(true);
+  };
+
+  const handleEditSchedule = (item) => {
+    let parsedDays = [1, 2, 3, 4, 5];
+    try {
+      parsedDays = typeof item.days_of_week === 'string' ? JSON.parse(item.days_of_week) : item.days_of_week;
+    } catch (e) {}
+
+    let customNum = '';
+    let targetJid = item.target_jid;
+    if (item.target_type === 'custom') {
+      customNum = item.target_jid.split('@')[0];
+    }
+
+    setFormData({
+      target_type: item.target_type || 'group',
+      target_jid: targetJid || '',
+      target_name: item.target_name || '',
+      custom_number: customNum,
+      message: item.message || '',
+      schedule_type: item.schedule_type || 'daily',
+      scheduled_date: item.scheduled_date || new Date().toISOString().split('T')[0],
+      scheduled_time: item.scheduled_time || '08:00',
+      days_of_week: Array.isArray(parsedDays) ? parsedDays : [1, 2, 3, 4, 5],
+    });
+    setEditingScheduleId(item.id);
+    setShowScheduleModal(true);
+  };
+
+  const handleSaveSchedule = async (e) => {
     e.preventDefault();
     setLoading(true);
 
@@ -253,16 +298,26 @@ export default function App() {
     }
 
     try {
-      await api.post('/api/schedules', {
+      const payload = {
         ...formData,
         target_jid: finalJid,
-        target_name: finalName
-      });
+        target_name: finalName,
+        status: 'active'
+      };
+
+      if (editingScheduleId) {
+        await api.put(`/api/schedules/${editingScheduleId}`, payload);
+        alert('Jadwal pesan berhasil diperbarui!');
+      } else {
+        await api.post('/api/schedules', payload);
+        alert('Jadwal pesan baru berhasil dibuat!');
+      }
+
       setShowScheduleModal(false);
+      setEditingScheduleId(null);
       fetchSchedules();
-      alert('Jadwal pesan baru berhasil dibuat!');
     } catch (err) {
-      alert('Gagal membuat jadwal: ' + (err.response?.data?.error || err.message));
+      alert('Gagal menyimpan jadwal: ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -514,7 +569,7 @@ export default function App() {
               Sync Kontak & Grup
             </button>
             <button
-              onClick={() => setShowScheduleModal(true)}
+              onClick={handleOpenCreateModal}
               className="flex items-center gap-2 text-xs font-bold px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg shadow-emerald-500/25 transition-all"
             >
               <Plus className="w-4 h-4" />
@@ -534,7 +589,7 @@ export default function App() {
                   Buat jadwal pertama Anda untuk mengirim pesan ke grup atau kontak pribadi secara otomatis.
                 </p>
                 <button
-                  onClick={() => setShowScheduleModal(true)}
+                  onClick={handleOpenCreateModal}
                   className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
                 >
                   <Plus className="w-4 h-4" />
@@ -615,6 +670,14 @@ export default function App() {
                           {item.status === 'active' ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                         </button>
                       )}
+
+                      <button
+                        onClick={() => handleEditSchedule(item)}
+                        className="p-2 rounded-xl text-xs font-medium bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all"
+                        title="Edit Jadwal"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
 
                       <button
                         onClick={() => handleDeleteSchedule(item.id)}
@@ -785,7 +848,7 @@ export default function App() {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-emerald-400" />
-                Buat Jadwal Otomatisasi Pesan
+                {editingScheduleId ? 'Edit Jadwal Pesan' : 'Buat Jadwal Otomatisasi Pesan'}
               </h3>
               <button
                 onClick={() => setShowScheduleModal(false)}
@@ -795,7 +858,7 @@ export default function App() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateSchedule} className="space-y-4 text-xs">
+            <form onSubmit={handleSaveSchedule} className="space-y-4 text-xs">
               {/* Target Type */}
               <div>
                 <label className="block font-semibold text-slate-300 mb-1">Tipe Target Pengiriman:</label>
@@ -955,7 +1018,7 @@ export default function App() {
                 disabled={loading}
                 className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-500/25 transition-all"
               >
-                Simpan & Aktifkan Jadwal
+                {editingScheduleId ? 'Simpan Perubahan Jadwal' : 'Simpan & Aktifkan Jadwal'}
               </button>
             </form>
           </div>
