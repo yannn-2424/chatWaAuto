@@ -21,14 +21,19 @@ import {
   Sparkles,
   Info,
   Lock,
-  Pencil
+  Pencil,
+  Settings
 } from './components/Icons.jsx';
 
 import Login from './components/Login.jsx';
 
 const RAILWAY_BACKEND_URL = 'https://chatwaauto-production.up.railway.app';
 
-const getBackendUrl = () => {
+export const getBackendUrl = () => {
+  if (typeof window !== 'undefined') {
+    const custom = localStorage.getItem('autowa_backend_url');
+    if (custom && custom.trim() !== '') return custom.trim().replace(/\/+$/, '');
+  }
   if (import.meta.env.VITE_SERVER_URL) return import.meta.env.VITE_SERVER_URL;
   if (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
     return RAILWAY_BACKEND_URL;
@@ -65,9 +70,10 @@ const getSocket = () => {
   return socketInstance;
 };
 
-const api = axios.create({ baseURL: getBackendUrl() });
+const api = axios.create();
 
 api.interceptors.request.use((config) => {
+  config.baseURL = getBackendUrl();
   const token = getStoredToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -86,6 +92,54 @@ export default function App() {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [editingScheduleId, setEditingScheduleId] = useState(null);
+  const [showServerModal, setShowServerModal] = useState(false);
+  const [serverConnError, setServerConnError] = useState(false);
+  const [customServerInput, setCustomServerInput] = useState(() => getBackendUrl());
+  const [testConnStatus, setTestConnStatus] = useState(null);
+  const [testConnMsg, setTestConnMsg] = useState('');
+
+  const handleTestServer = async (urlToTest) => {
+    setTestConnStatus('testing');
+    setTestConnMsg('Menghubungkan ke server...');
+    const clean = (urlToTest || '').trim().replace(/\/+$/, '');
+    if (!clean) {
+      setTestConnStatus('error');
+      setTestConnMsg('URL Server tidak boleh kosong!');
+      return;
+    }
+    try {
+      const res = await axios.get(`${clean}/health`, { timeout: 6000 });
+      if (res.data && res.data.status === 'ok') {
+        setTestConnStatus('success');
+        setTestConnMsg(`✅ Terhubung Berhasil! (Status 200 OK)`);
+      } else {
+        setTestConnStatus('success');
+        setTestConnMsg(`✅ Terhubung! (Response status: ${res.status})`);
+      }
+    } catch (err) {
+      setTestConnStatus('error');
+      if (err.response?.status === 404 && err.response?.data?.message === 'Application not found') {
+        setTestConnMsg(`❌ Railway 404: Application Not Found. Pastikan service Railway sedang aktif & periksa URL domain di dashboard Railway.`);
+      } else {
+        setTestConnMsg(`❌ Gagal terhubung: ${err.message}. Periksa URL atau koneksi jaringan.`);
+      }
+    }
+  };
+
+  const handleSaveServerUrl = () => {
+    const clean = customServerInput.trim().replace(/\/+$/, '');
+    if (!clean) {
+      alert('URL server tidak boleh kosong!');
+      return;
+    }
+    localStorage.setItem('autowa_backend_url', clean);
+    window.location.reload();
+  };
+
+  const handleResetServerUrl = () => {
+    localStorage.removeItem('autowa_backend_url');
+    window.location.reload();
+  };
 
   const handleAdminLogin = async (password) => {
     setLoading(true);
@@ -94,9 +148,13 @@ export default function App() {
       if (res && res.data && res.data.token) {
         localStorage.setItem('autowa_token', res.data.token);
         setToken(res.data.token);
+        setServerConnError(false);
         return res.data;
       }
     } catch (err) {
+      if (err.code === 'ERR_NETWORK' || !err.response) {
+        setServerConnError(true);
+      }
       console.error('Admin login failed:', err);
       throw err;
     } finally {
@@ -134,7 +192,9 @@ export default function App() {
     try {
       const res = await api.get('/api/schedules');
       setSchedules(res.data);
+      setServerConnError(false);
     } catch (e) {
+      if (e.code === 'ERR_NETWORK' || !e.response) setServerConnError(true);
       console.error('Fetch schedules error:', e);
     }
   };
@@ -143,6 +203,7 @@ export default function App() {
     try {
       const res = await api.get('/api/targets');
       setTargets(res.data);
+      setServerConnError(false);
       if (res.data.length > 0 && !formData.target_jid) {
         setFormData(prev => ({
           ...prev,
@@ -151,6 +212,7 @@ export default function App() {
         }));
       }
     } catch (e) {
+      if (e.code === 'ERR_NETWORK' || !e.response) setServerConnError(true);
       console.error('Fetch targets error:', e);
     }
   };
@@ -159,7 +221,9 @@ export default function App() {
     try {
       const res = await api.get('/api/logs');
       setLogs(res.data);
+      setServerConnError(false);
     } catch (e) {
+      if (e.code === 'ERR_NETWORK' || !e.response) setServerConnError(true);
       console.error('Fetch logs error:', e);
     }
   };
@@ -169,8 +233,10 @@ export default function App() {
       const res = await api.get('/api/status');
       if (res.data) {
         setWaStatus(res.data);
+        setServerConnError(false);
       }
     } catch (e) {
+      if (e.code === 'ERR_NETWORK' || !e.response) setServerConnError(true);
       console.error('Fetch status error:', e);
     }
   };
@@ -387,11 +453,50 @@ export default function App() {
   ];
 
   if (!token) {
-    return <Login onLogin={handleAdminLogin} loading={loading} />;
+    return (
+      <>
+        <Login
+          onLogin={handleAdminLogin}
+          loading={loading}
+          currentBackendUrl={getBackendUrl()}
+          onOpenServerSettings={() => {
+            setCustomServerInput(getBackendUrl());
+            setTestConnStatus(null);
+            setTestConnMsg('');
+            setShowServerModal(true);
+          }}
+        />
+        {showServerModal && renderServerModal()}
+      </>
+    );
   }
 
   return (
     <div className="min-h-screen pb-12">
+      {/* Server Error Alert Banner */}
+      {serverConnError && (
+        <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2.5 text-xs text-amber-300 flex items-center justify-between relative z-50">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+            <span className="truncate">
+              Tidak dapat terhubung ke Backend di <strong className="font-mono text-amber-200">{getBackendUrl() || 'Default URL'}</strong>. Pastikan service Railway aktif atau atur URL server baru.
+            </span>
+          </div>
+          <button
+            onClick={() => {
+              setCustomServerInput(getBackendUrl());
+              setTestConnStatus(null);
+              setTestConnMsg('');
+              setShowServerModal(true);
+            }}
+            className="px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 font-semibold rounded-lg border border-amber-500/30 transition-all flex items-center gap-1.5 ml-3 flex-shrink-0"
+          >
+            <Settings className="w-3.5 h-3.5" />
+            Pengaturan Server
+          </button>
+        </div>
+      )}
+
       {/* Top Header */}
       <header className="sticky top-0 z-40 bg-[#0b0f19]/80 backdrop-blur-md border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
@@ -407,7 +512,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* WA Status Badge & Admin Lock */}
+          {/* WA Status Badge & Action Buttons */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-800">
               <span className={`w-3 h-3 rounded-full ${
@@ -445,6 +550,20 @@ export default function App() {
                 Scan QR Code
               </button>
             )}
+
+            <button
+              onClick={() => {
+                setCustomServerInput(getBackendUrl());
+                setTestConnStatus(null);
+                setTestConnMsg('');
+                setShowServerModal(true);
+              }}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all"
+              title="Pengaturan URL Server Backend"
+            >
+              <Settings className="w-3.5 h-3.5 text-emerald-400" />
+              Server
+            </button>
 
             <button
               onClick={handleAdminLogout}
@@ -1021,6 +1140,111 @@ export default function App() {
                 {editingScheduleId ? 'Simpan Perubahan Jadwal' : 'Simpan & Aktifkan Jadwal'}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Server Settings */}
+      {showServerModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="glass-card max-w-lg w-full p-6 rounded-3xl relative border border-slate-700 shadow-2xl">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl">
+                  <Settings className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-100">Pengaturan URL Backend Server</h3>
+                  <p className="text-[11px] text-slate-400">Atur atau ubah alamat API backend / Railway Anda</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowServerModal(false)}
+                className="text-slate-400 hover:text-white text-lg p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-300 mb-1.5">
+                  URL Backend API:
+                </label>
+                <input
+                  type="text"
+                  value={customServerInput}
+                  onChange={(e) => {
+                    setCustomServerInput(e.target.value);
+                    setTestConnStatus(null);
+                    setTestConnMsg('');
+                  }}
+                  placeholder="Contoh: https://chatwaauto-production.up.railway.app"
+                  className="w-full bg-slate-900 border border-slate-700 focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-slate-100 text-xs font-mono focus:outline-none"
+                />
+                <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+                  💡 <strong>Tips Railway:</strong> Buka dashboard Railway &gt; Pilih Service Backend Anda &gt; <em>Settings &gt; Networking &gt; Public Networking</em> &gt; Copy URL domain yang aktif.
+                </p>
+              </div>
+
+              {/* Test Connection Button & Result */}
+              <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 font-medium">Uji Coba Koneksi Server:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleTestServer(customServerInput)}
+                    disabled={testConnStatus === 'testing'}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-semibold rounded-lg border border-slate-700 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {testConnStatus === 'testing' ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-3.5 h-3.5" />
+                    )}
+                    Cek Koneksi
+                  </button>
+                </div>
+
+                {testConnMsg && (
+                  <div className={`p-2.5 rounded-lg text-xs font-medium ${
+                    testConnStatus === 'success'
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                  }`}>
+                    {testConnMsg}
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-between pt-3 border-t border-slate-800 gap-3">
+                <button
+                  type="button"
+                  onClick={handleResetServerUrl}
+                  className="px-3 py-2 text-xs text-slate-400 hover:text-slate-200 transition-all"
+                >
+                  Reset ke Default
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowServerModal(false)}
+                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition-all"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveServerUrl}
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-xs shadow-lg shadow-emerald-500/25 transition-all"
+                  >
+                    Simpan & Hubungkan
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

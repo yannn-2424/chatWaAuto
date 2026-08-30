@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function Login({ onLogin, loading }) {
+export default function Login({ onLogin, loading, currentBackendUrl, onOpenServerSettings }) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -15,7 +15,11 @@ export default function Login({ onLogin, loading }) {
     try {
       await onLogin(password);
     } catch (err) {
-      setErrorMsg(err.response?.data?.error || 'Password salah! Akses ditolak.');
+      if (err.code === 'ERR_NETWORK' || !err.response) {
+        setErrorMsg(`Tidak dapat terhubung ke Backend Server (${currentBackendUrl || 'Default'}). Periksa URL Server di bawah.`);
+      } else {
+        setErrorMsg(err.response?.data?.error || 'Password salah! Akses ditolak.');
+      }
     }
   };
 
@@ -108,6 +112,25 @@ export default function Login({ onLogin, loading }) {
             )}
           </button>
         </form>
+
+        {/* Server Connection Info */}
+        <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+          <div className="flex items-center gap-1.5 overflow-hidden pr-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400/80 flex-shrink-0" />
+            <span className="truncate text-[11px] text-slate-400" title={currentBackendUrl}>
+              {currentBackendUrl ? currentBackendUrl.replace(/^https?:\/\//, '') : 'Default Backend'}
+            </span>
+          </div>
+          {onOpenServerSettings && (
+            <button
+              type="button"
+              onClick={onOpenServerSettings}
+              className="text-emerald-400 hover:text-emerald-300 font-semibold text-[11px] flex items-center gap-1 flex-shrink-0 bg-slate-900/80 hover:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700/60 transition-all"
+            >
+              ⚙️ Ubah Server
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
