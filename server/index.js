@@ -21,8 +21,22 @@ const io = new SocketIOServer(server, {
   }
 });
 
-app.use(cors());
+// Explicit CORS setup
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
+
+// Health Check Endpoints
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/', (req, res) => {
+  res.status(200).json({ name: 'WA Automation Server', status: 'running' });
+});
 
 // WA Automation Backend Server - v1.0.2 (Auth & Persistence Ready)
 app.use('/api', routes);
@@ -66,24 +80,25 @@ const PORT = process.env.PORT || 5001;
 // Initialize System
 const startServer = async () => {
   try {
-    console.log('Initializing SQLite Database...');
-    await initDb();
-    console.log('Database initialized successfully.');
-
-    console.log('Initializing WhatsApp Engine...');
-    await initWhatsApp();
-
-    console.log('Starting Scheduler Engine...');
-    startScheduler();
-
-    server.listen(PORT, () => {
+    server.listen(PORT, '0.0.0.0', () => {
       console.log(`=================================================`);
       console.log(`🚀 WA Automation Server running on port ${PORT}`);
       console.log(`=================================================`);
     });
+
+    console.log('Initializing SQLite Database...');
+    await initDb();
+    console.log('Database initialized successfully.');
+
+    console.log('Initializing WhatsApp Engine in background...');
+    initWhatsApp().catch(err => {
+      console.error('WhatsApp engine startup warning:', err.message);
+    });
+
+    console.log('Starting Scheduler Engine...');
+    startScheduler();
   } catch (err) {
     console.error('Failed to start server:', err);
-    process.exit(1);
   }
 };
 
