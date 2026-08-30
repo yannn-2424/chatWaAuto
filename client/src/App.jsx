@@ -74,6 +74,7 @@ const api = axios.create();
 
 api.interceptors.request.use((config) => {
   config.baseURL = getBackendUrl();
+  config.headers['Bypass-Tunnel-Reminder'] = 'true';
   const token = getStoredToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -108,7 +109,10 @@ export default function App() {
       return;
     }
     try {
-      const res = await axios.get(`${clean}/health`, { timeout: 6000 });
+      const res = await axios.get(`${clean}/health`, {
+        headers: { 'Bypass-Tunnel-Reminder': 'true' },
+        timeout: 6000
+      });
       if (res.data && res.data.status === 'ok') {
         setTestConnStatus('success');
         setTestConnMsg(`✅ Terhubung Berhasil! (Status 200 OK)`);
@@ -118,10 +122,12 @@ export default function App() {
       }
     } catch (err) {
       setTestConnStatus('error');
-      if (err.response?.status === 404 && err.response?.data?.message === 'Application not found') {
-        setTestConnMsg(`❌ Railway 404: Application Not Found. Pastikan service Railway sedang aktif & periksa URL domain di dashboard Railway.`);
+      if (err.response?.status === 511) {
+        setTestConnMsg(`ℹ️ Localtunnel membutuhkan konfirmasi 1 kali: Buka URL di tab baru browser lalu klik tombol "Click to Continue", kemudian klik Cek Koneksi lagi.`);
+      } else if (err.response?.status === 404 && err.response?.data?.message === 'Application not found') {
+        setTestConnMsg(`❌ Railway 404: Application Not Found. Pastikan service Railway sedang aktif.`);
       } else {
-        setTestConnMsg(`❌ Gagal terhubung: ${err.message}. Periksa URL atau koneksi jaringan.`);
+        setTestConnMsg(`❌ Gagal terhubung: ${err.message}.`);
       }
     }
   };
