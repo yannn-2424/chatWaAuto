@@ -53,7 +53,18 @@ export const initWhatsApp = async () => {
     fs.mkdirSync(authDir, { recursive: true });
   }
 
-  const { state, saveCreds } = await useMultiFileAuthState(authDir);
+  let state, saveCreds;
+  try {
+    ({ state, saveCreds } = await useMultiFileAuthState(authDir));
+  } catch (err) {
+    console.error('Error loading auth state, cleaning folder and retrying:', err.message);
+    if (fs.existsSync(authDir)) {
+      fs.rmSync(authDir, { recursive: true, force: true });
+      fs.mkdirSync(authDir, { recursive: true });
+    }
+    ({ state, saveCreds } = await useMultiFileAuthState(authDir));
+  }
+  
   const { version } = await fetchLatestBaileysVersion();
 
   sock = makeWASocket({
