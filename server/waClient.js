@@ -33,7 +33,22 @@ export const getStatus = () => {
   };
 };
 
+let reconnectTimeout = null;
+
 export const initWhatsApp = async () => {
+  if (reconnectTimeout) {
+    clearTimeout(reconnectTimeout);
+    reconnectTimeout = null;
+  }
+
+  if (sock) {
+    try {
+      sock.ev.removeAllListeners();
+      sock.ws?.close();
+    } catch (e) {}
+    sock = null;
+  }
+
   if (!fs.existsSync(authDir)) {
     fs.mkdirSync(authDir, { recursive: true });
   }
@@ -101,9 +116,10 @@ export const initWhatsApp = async () => {
 
       if (shouldReconnect) {
         console.log('Reconnecting to WhatsApp...');
-        setTimeout(() => {
+        if (reconnectTimeout) clearTimeout(reconnectTimeout);
+        reconnectTimeout = setTimeout(() => {
           initWhatsApp();
-        }, 3000);
+        }, 5000);
       } else {
         console.log('Logged out from WhatsApp. Cleaning auth folder...');
         if (fs.existsSync(authDir)) {
