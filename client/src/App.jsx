@@ -452,6 +452,110 @@ export default function App() {
     { num: 0, label: 'Minggu' },
   ];
 
+  const renderServerModal = () => (
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="glass-card max-w-lg w-full p-6 rounded-3xl relative border border-slate-700 shadow-2xl">
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl">
+              <Settings className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-100">Pengaturan URL Backend Server</h3>
+              <p className="text-[11px] text-slate-400">Atur atau ubah alamat API backend / Railway / Localtunnel Anda</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowServerModal(false)}
+            className="text-slate-400 hover:text-white text-lg p-1"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="space-y-4 text-xs">
+          <div>
+            <label className="block font-semibold text-slate-300 mb-1.5">
+              URL Backend API:
+            </label>
+            <input
+              type="text"
+              value={customServerInput}
+              onChange={(e) => {
+                setCustomServerInput(e.target.value);
+                setTestConnStatus(null);
+                setTestConnMsg('');
+              }}
+              placeholder="Contoh: https://xxxx-xxxx.loca.lt"
+              className="w-full bg-slate-900 border border-slate-700 focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-slate-100 text-xs font-mono focus:outline-none"
+            />
+            <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+              💡 <strong>Tips:</strong> Masukkan URL publik dari <em>localtunnel</em> (contoh: <code>https://xxxx-xxxx.loca.lt</code>) atau domain Render/Railway Anda.
+            </p>
+          </div>
+
+          {/* Test Connection Button & Result */}
+          <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400 font-medium">Uji Coba Koneksi Server:</span>
+              <button
+                type="button"
+                onClick={() => handleTestServer(customServerInput)}
+                disabled={testConnStatus === 'testing'}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-semibold rounded-lg border border-slate-700 transition-all flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {testConnStatus === 'testing' ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5" />
+                )}
+                Cek Koneksi
+              </button>
+            </div>
+
+            {testConnMsg && (
+              <div className={`p-2.5 rounded-lg text-xs font-medium ${
+                testConnStatus === 'success'
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+              }`}>
+                {testConnMsg}
+              </div>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-between pt-3 border-t border-slate-800 gap-3">
+            <button
+              type="button"
+              onClick={handleResetServerUrl}
+              className="px-3 py-2 text-xs text-slate-400 hover:text-slate-200 transition-all"
+            >
+              Reset ke Default
+            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowServerModal(false)}
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition-all"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveServerUrl}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-xs shadow-lg shadow-emerald-500/25 transition-all"
+              >
+                Simpan & Hubungkan
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   if (!token) {
     return (
       <>
@@ -1145,109 +1249,7 @@ export default function App() {
       )}
 
       {/* Modal Server Settings */}
-      {showServerModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="glass-card max-w-lg w-full p-6 rounded-3xl relative border border-slate-700 shadow-2xl">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl">
-                  <Settings className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-100">Pengaturan URL Backend Server</h3>
-                  <p className="text-[11px] text-slate-400">Atur atau ubah alamat API backend / Railway Anda</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowServerModal(false)}
-                className="text-slate-400 hover:text-white text-lg p-1"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-4 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-300 mb-1.5">
-                  URL Backend API:
-                </label>
-                <input
-                  type="text"
-                  value={customServerInput}
-                  onChange={(e) => {
-                    setCustomServerInput(e.target.value);
-                    setTestConnStatus(null);
-                    setTestConnMsg('');
-                  }}
-                  placeholder="Contoh: https://chatwaauto-production.up.railway.app"
-                  className="w-full bg-slate-900 border border-slate-700 focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-slate-100 text-xs font-mono focus:outline-none"
-                />
-                <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
-                  💡 <strong>Tips Railway:</strong> Buka dashboard Railway &gt; Pilih Service Backend Anda &gt; <em>Settings &gt; Networking &gt; Public Networking</em> &gt; Copy URL domain yang aktif.
-                </p>
-              </div>
-
-              {/* Test Connection Button & Result */}
-              <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400 font-medium">Uji Coba Koneksi Server:</span>
-                  <button
-                    type="button"
-                    onClick={() => handleTestServer(customServerInput)}
-                    disabled={testConnStatus === 'testing'}
-                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-semibold rounded-lg border border-slate-700 transition-all flex items-center gap-1.5 disabled:opacity-50"
-                  >
-                    {testConnStatus === 'testing' ? (
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Sparkles className="w-3.5 h-3.5" />
-                    )}
-                    Cek Koneksi
-                  </button>
-                </div>
-
-                {testConnMsg && (
-                  <div className={`p-2.5 rounded-lg text-xs font-medium ${
-                    testConnStatus === 'success'
-                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                      : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                  }`}>
-                    {testConnMsg}
-                  </div>
-                )}
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center justify-between pt-3 border-t border-slate-800 gap-3">
-                <button
-                  type="button"
-                  onClick={handleResetServerUrl}
-                  className="px-3 py-2 text-xs text-slate-400 hover:text-slate-200 transition-all"
-                >
-                  Reset ke Default
-                </button>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowServerModal(false)}
-                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition-all"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveServerUrl}
-                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-xs shadow-lg shadow-emerald-500/25 transition-all"
-                  >
-                    Simpan & Hubungkan
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {showServerModal && renderServerModal()}
     </div>
   );
 }
