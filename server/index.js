@@ -12,6 +12,15 @@ import routes from './routes.js';
 
 dotenv.config();
 
+// Global crash prevention handlers for background Baileys/WhatsApp timeouts
+process.on('uncaughtException', (err) => {
+  console.error('[SERVER] Caught unhandled exception (prevented crash):', err.message);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[SERVER] Caught unhandled rejection (prevented crash):', reason?.message || reason);
+});
+
 const app = express();
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
