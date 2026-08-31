@@ -397,10 +397,13 @@ export default function App() {
 
   const handleToggleSchedule = async (id) => {
     try {
-      await api.post(`/api/schedules/${id}/toggle`);
-      fetchSchedules();
+      const res = await api.post(`/api/schedules/${id}/toggle`);
+      if (res.data) {
+        setSchedules(prev => prev.map(s => s.id === id ? res.data : s));
+      }
+      await fetchSchedules();
     } catch (e) {
-      alert('Gagal mengubah status jadwal');
+      alert('Gagal mengubah status jadwal: ' + (e.response?.data?.error || e.message));
     }
   };
 
@@ -408,9 +411,10 @@ export default function App() {
     if (window.confirm('Hapus jadwal pengiriman ini?')) {
       try {
         await api.delete(`/api/schedules/${id}`);
-        fetchSchedules();
+        setSchedules(prev => prev.filter(s => s.id !== id));
+        await fetchSchedules();
       } catch (e) {
-        alert('Gagal menghapus jadwal');
+        alert('Gagal menghapus jadwal: ' + (e.response?.data?.error || e.message));
       }
     }
   };

@@ -36,6 +36,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['*']
 }));
+app.options('*', cors());
 app.use(express.json());
 
 // Health Check Endpoints
